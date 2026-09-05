@@ -11,6 +11,7 @@ import adminRouter from './routes/admin.js';
 import education from './routes/education.js';
 import certifications from './routes/certifications.js';
 import analytics from './routes/analytics.js'
+import resumeRouter from './routes/resume.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -29,7 +30,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 
 
 
@@ -42,6 +43,7 @@ app.use('/api/about', aboutRouter);
 app.use('/api/education', education);
 app.use('/api/certifications', certifications);
 app.use('/api/analytics', analytics);
+app.use('/api/resume', resumeRouter);
 
 // Admin Routes (protected)
 app.use('/api/admin', adminRouter);

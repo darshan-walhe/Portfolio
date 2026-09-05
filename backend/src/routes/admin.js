@@ -156,6 +156,57 @@ router.put('/about', async (req, res) => {
   }
 });
 
+// ── Resume ────────────────────────────────────────────────────
+// Stored as base64 directly in the Firestore doc, so we keep it well
+// under Firestore's 1MiB-per-document limit.
+const MAX_RESUME_BYTES = 700 * 1024; // 700KB original PDF
+
+router.post('/resume', async (req, res) => {
+  try {
+    const { fileName, fileData } = req.body;
+
+    if (!fileName || !fileData) {
+      return res.status(400).json({ error: 'fileName and fileData are required' });
+    }
+    if (!fileName.toLowerCase().endsWith('.pdf')) {
+      return res.status(400).json({ error: 'Only PDF files are allowed' });
+    }
+
+    // Accept either a raw base64 string or a data URL (data:application/pdf;base64,....)
+    const base64 = fileData.includes(',') ? fileData.split(',')[1] : fileData;
+    const buffer = Buffer.from(base64, 'base64');
+
+    if (buffer.length > MAX_RESUME_BYTES) {
+      return res.status(413).json({
+        error: `File too large. Max size is ${Math.round(MAX_RESUME_BYTES / 1024)}KB`,
+      });
+    }
+
+    await setDoc(doc(db, 'Resume', 'current'), {
+      fileName,
+      fileData: base64,
+      contentType: 'application/pdf',
+      size: buffer.length,
+      uploadedAt: new Date().toISOString(),
+    });
+
+    res.json({ message: 'Resume uploaded', fileName, size: buffer.length });
+  } catch (error) {
+    console.error('POST /resume error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.delete('/resume', async (req, res) => {
+  try {
+    await deleteDoc(doc(db, 'Resume', 'current'));
+    res.json({ message: 'Resume deleted' });
+  } catch (error) {
+    console.error('DELETE /resume error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // ── Messages ───────────────────────────────────────────────────
 router.get('/messages', async (req, res) => {
   try {

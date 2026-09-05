@@ -9,6 +9,7 @@ import ExperiencesManager     from './managers/ExperiencesManager';
 import EducationManager       from './managers/Educationmanager';
 import CertificationsManager  from './managers/Certificationsmanager';
 import AboutManager           from './managers/AboutManager';
+import ResumeManager          from './managers/ResumeManager';
 import ContactManager         from './managers/ContactManager';
 import MessagesManager        from './managers/MessagesManager';
 
@@ -296,6 +297,7 @@ const TABS = [
   { id: 'education',       label: 'Education',       icon: '◍', group: 'Content'  },
   { id: 'certifications',  label: 'Certifications',  icon: '◆', group: 'Content'  },
   { id: 'about',           label: 'About',           icon: '◐', group: 'Profile'  },
+  { id: 'resume',          label: 'Resume',          icon: '⤓', group: 'Profile'  },
   { id: 'contact',         label: 'Contact',         icon: '◑', group: 'Profile'  },
   { id: 'messages',        label: 'Messages',        icon: '◻', group: 'Inbox',   badge: true },
 ];
@@ -394,6 +396,7 @@ const Admin = ({ onLogout }) => {
             {activeTab === 'education'      && <EducationManager       onDataUpdate={triggerRefresh} refreshTrigger={refreshTrigger} />}
             {activeTab === 'certifications' && <CertificationsManager  onDataUpdate={triggerRefresh} refreshTrigger={refreshTrigger} />}
             {activeTab === 'about'          && <AboutManager           onDataUpdate={triggerRefresh} refreshTrigger={refreshTrigger} />}
+            {activeTab === 'resume'         && <ResumeManager          onDataUpdate={triggerRefresh} refreshTrigger={refreshTrigger} />}
             {activeTab === 'contact'        && <ContactManager         onDataUpdate={triggerRefresh} />}
             {activeTab === 'messages'       && <MessagesManager        onDataUpdate={triggerRefresh} onUnreadChange={setUnread} />}
           </ContentPad>

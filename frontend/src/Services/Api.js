@@ -361,6 +361,63 @@ export const getProfileImage = async () => {
 };
 
 // ==================================================================
+//                        Resume
+// ==================================================================
+
+// Public: current resume metadata (or null if none uploaded)
+export const getResumeInfo = async () => {
+  try {
+    const res = await fetch(`${API_URL}/api/resume`);
+    return await handleResponse(res, 'Failed to fetch resume info');
+  } catch (error) {
+    console.error('getResumeInfo error:', error);
+    return null;
+  }
+};
+
+// Public: direct URL the browser can download/open (used as an <a href>)
+export const getResumeDownloadUrl = () => `${API_URL}/api/resume/download`;
+
+// Admin: reads a File object, base64-encodes it, and uploads it
+export const uploadResume = async (file) => {
+  try {
+    if (!file) throw new Error('No file selected');
+    if (file.type !== 'application/pdf') throw new Error('Only PDF files are allowed');
+
+    const fileData = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result); // data:application/pdf;base64,....
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+
+    const res = await fetch(`${API_URL}/api/admin/resume`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify({ fileName: file.name, fileData }),
+    });
+    return await handleResponse(res, 'Failed to upload resume');
+  } catch (error) {
+    console.error('uploadResume error:', error);
+    throw error;
+  }
+};
+
+// Admin: remove the current resume
+export const deleteResume = async () => {
+  try {
+    const res = await fetch(`${API_URL}/api/admin/resume`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+    });
+    await handleResponse(res, 'Failed to delete resume');
+  } catch (error) {
+    console.error('deleteResume error:', error);
+    throw error;
+  }
+};
+
+// ==================================================================
 //                        Education
 // ==================================================================
 export const getAllEducation = async () => {

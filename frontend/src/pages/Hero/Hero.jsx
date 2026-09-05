@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled, { keyframes } from "styled-components";
 import { getProfileImage } from "../../Services/Api";
-import { HeroEventTracker } from '../../Services/ManageData';
+import { HeroEventTracker, getResumeInfo, getResumeDownloadUrl } from '../../Services/ManageData';
 
 // ── Animations ──────────────────────────────────────────────
 const float = keyframes`
@@ -380,6 +380,7 @@ const ScrollDot = styled.div`
 // ── Component ────────────────────────────────────────────────
 const Hero = () => {
   const [profileImage, setProfileImage] = useState('/4.jpeg');
+  const [hasResume, setHasResume] = useState(false);
 
   useEffect(() => {
     const fetchProfileImage = async () => {
@@ -394,7 +395,13 @@ const Hero = () => {
       }
     };
 
+    const fetchResumeInfo = async () => {
+      const info = await getResumeInfo();
+      setHasResume(!!info);
+    };
+
     fetchProfileImage();
+    fetchResumeInfo();
 
   }, []);
 
@@ -443,6 +450,16 @@ const Hero = () => {
           <ButtonRow>
             <PrimaryBtn href="#projects" onClick={() => trackEvent('projects')}>View Projects</PrimaryBtn>
             <SecondaryBtn href="#contact" onClick={() => trackEvent('contact')}>Contact Me</SecondaryBtn>
+            {hasResume && (
+              <PrimaryBtn
+                href={getResumeDownloadUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => trackEvent('resume')}
+              >
+                Download Resume
+              </PrimaryBtn>
+            )}
           </ButtonRow>
         </TextAreaContainer>
 

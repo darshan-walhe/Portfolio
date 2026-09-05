@@ -75,6 +75,7 @@ Portfolio/
 │   │   │           ├── ExperiencesManager.jsx     # Experience CRUD
 │   │   │           ├── MessagesManager.jsx        # View contact messages
 │   │   │           ├── AboutManager.jsx           # Edit about info
+│   │   │           ├── ResumeManager.jsx          # Resume PDF upload/delete
 │   │   │           └── ContactManager.jsx         # Contact settings
 │   │   ├── Services/
 │   │   │   ├── Api.js           # All REST API calls (named exports)
@@ -97,6 +98,7 @@ Portfolio/
     │       ├── experiences.js        # GET /api/experiences
     │       ├── about.js              # GET /api/about
     │       ├── messages.js           # POST /api/messages
+    │       ├── resume.js             # GET /api/resume, GET /api/resume/download
     │       └── admin.js              # Login + protected CRUD routes
     └── package.json
 ```
@@ -115,6 +117,8 @@ Portfolio/
 | `GET` | `/api/experiences` | Get all experiences |
 | `GET` | `/api/about` | Get about info |
 | `POST` | `/api/messages` | Submit contact form message |
+| `GET` | `/api/resume` | Get current resume metadata (filename, size, upload date) or `null` |
+| `GET` | `/api/resume/download` | Download the current resume PDF |
 | `GET` | `/health` | Server health check |
 
 ### Admin Endpoints (JWT Protected)
@@ -131,6 +135,8 @@ Portfolio/
 | `PUT` | `/api/admin/experiences/:id` | Update experience |
 | `DELETE` | `/api/admin/experiences/:id` | Delete experience |
 | `PUT` | `/api/admin/about` | Update about info |
+| `POST` | `/api/admin/resume` | Upload/replace the resume PDF (base64, max 700KB) |
+| `DELETE` | `/api/admin/resume` | Remove the current resume |
 | `GET` | `/api/admin/messages` | Get all contact messages |
 | `PUT` | `/api/admin/messages/:id/read` | Mark message as read |
 | `DELETE` | `/api/admin/messages/:id` | Delete message |
@@ -146,6 +152,8 @@ Firestore Database
 ├── Experience/         # Work experience
 ├── AboutMe/
 │   └── profile         # Single document for about info
+├── Resume/
+│   └── current         # Single document holding the resume PDF (base64)
 └── Messages/           # Contact form submissions
 ```
 
@@ -216,6 +224,24 @@ Firestore Database
   linkedin: "https://linkedin.com/..."
 }
 ```
+</details>
+
+<details>
+<summary><b>Resume → current</b></summary>
+
+```js
+{
+  fileName: "Darshan_Walhe_Resume.pdf",
+  fileData: "JVBERi0xLjQK...",   // base64-encoded PDF bytes
+  contentType: "application/pdf",
+  size: 583421,                  // bytes
+  uploadedAt: "2026-09-05T10:15:00.000Z"
+}
+```
+
+> Stored as base64 directly in the document, so it stays under Firestore's
+> ~1MiB document limit — the admin panel enforces a 700KB cap on the
+> original PDF before upload.
 </details>
 
 ---
@@ -353,6 +379,7 @@ Navigate to `/admin` on your deployed site (e.g., `https://your-site.onrender.co
 | **Experience** | Add / edit / delete work experience — role, company, type, date range, description, skill tags, current job flag |
 | **Messages** | View contact form submissions, mark as read, delete |
 | **About** | Update bio, profile image URL, social links |
+| **Resume** | Upload / replace / remove your resume PDF (drag-and-drop, 700KB max) |
 
 ---
 
@@ -365,6 +392,7 @@ Navigate to `/admin` on your deployed site (e.g., `https://your-site.onrender.co
 - **FontAwesome skill icons** — skills use real FA icons stored as `{ prefix: "fab", name: "react" }` objects in Firestore
 - **Single-server deployment** — backend serves both the REST API and the React frontend from `dist/`; one process, one port
 - **Graceful Firebase Auth error handling** — all known Firebase error codes (`auth/wrong-password`, `auth/too-many-requests`, etc.) return user-friendly messages
+- **Resume upload & download** — upload a PDF from the admin panel (stored as base64 in Firestore, no external storage needed); a "Download Resume" button appears on the Hero section automatically whenever one is uploaded
 
 ---
 
