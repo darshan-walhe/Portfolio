@@ -61,7 +61,7 @@ const AboutManager = ({ onDataUpdate }) => {
   const [imgUrl,   setImgUrl]   = useState('');
   const [imgPrev,  setImgPrev]  = useState('');
   const [form, setForm] = useState({
-    bio:'', role:'', location:'', downloadCV:'', profileImage:'',
+    bio:'', role:'', location:'', profileImage:'',
   });
 
   useEffect(() => { loadData(); }, []);
@@ -71,7 +71,7 @@ const AboutManager = ({ onDataUpdate }) => {
       const d = await getAboutMe();
       if (d) {
         setForm({ bio:d.bio||'', role:d.role||'', location:d.location||'',
-                  downloadCV:d.downloadCV||'', profileImage:d.profileImage||'' });
+                  profileImage:d.profileImage||'' });
         if (d.profileImage) { setImgUrl(d.profileImage); setImgPrev(d.profileImage); }
       }
     } catch(e) { console.error(e); }
@@ -145,12 +145,6 @@ const AboutManager = ({ onDataUpdate }) => {
                   <TextArea minH="130px" value={form.bio} onChange={e => set('bio', e.target.value)}
                     placeholder="Tell visitors about yourself, your experience, and what you're passionate about…"
                     disabled={loading} />
-                </FormGroup>
-
-                <FormGroup>
-                  <Label>Resume / CV URL</Label>
-                  <Input value={form.downloadCV} onChange={e => set('downloadCV', e.target.value)}
-                    placeholder="https://example.com/resume.pdf" disabled={loading} />
                 </FormGroup>
 
                 <Btn variant="primary" type="submit" disabled={loading} style={{width:'100%'}}>
