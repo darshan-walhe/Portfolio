@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
 import {
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
+  CartesianGrid, Tooltip as RechartsTooltip,
+} from 'recharts';
+import {
   getAllProjects, getAllSkills, getAllExperiences,
   getAllMessages, getAllEducation, getAllCertifications,
 } from '../../../Services/ManageData';
@@ -134,15 +138,39 @@ const PeriodChip = styled.button`
 `;
 
 // ── Line Chart ─────────────────────────────────────────────────
-const ChartArea = styled.div`position: relative; height: 130px; display: flex; flex-direction: column;`;
-const SvgChart = styled.svg`width: 100%; flex: 1; overflow: visible;`;
-const ChartXLabels = styled.div`display: flex; justify-content: space-between; margin-top: 5px;`;
-const XLabel = styled.span`font-family: 'JetBrains Mono', monospace; font-size: 0.54rem; color: rgba(255,255,255,0.18); flex: 1; text-align: center;`;
+const ChartArea = styled.div`position: relative; height: 190px;`;
 const ChartLegend = styled.div`display: flex; gap: 16px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.04);`;
 const LegendItem = styled.div`display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 0.62rem; color: rgba(255,255,255,0.35);`;
 
 /* FIX: $c is a transient prop */
 const LegendDot = styled.div`width: 8px; height: 3px; border-radius: 2px; background: ${({ $c }) => $c};`;
+
+const TipBox = styled.div`
+  background: #0d1a2e; border: 1px solid rgba(255,255,255,0.1); border-radius: 10px;
+  padding: 10px 12px; box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+`;
+const TipLabel = styled.div`font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: rgba(255,255,255,0.35); letter-spacing: 0.08em; margin-bottom: 6px;`;
+const TipRow = styled.div`display: flex; align-items: center; gap: 7px; font-size: 0.74rem; font-weight: 700; color: white; & + & { margin-top: 4px; }`;
+
+/* FIX: $c is a transient prop */
+const TipDot = styled.span`width: 7px; height: 7px; border-radius: 50%; background: ${({ $c }) => $c}; flex-shrink: 0;`;
+const TipName = styled.span`font-family: 'JetBrains Mono', monospace; font-weight: 500; color: rgba(255,255,255,0.4); font-size: 0.66rem; margin-right: auto;`;
+
+const ChartTooltip = ({ active, payload, label }) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <TipBox>
+      <TipLabel>{label}</TipLabel>
+      {payload.map((p) => (
+        <TipRow key={p.dataKey}>
+          <TipDot $c={p.color} />
+          <TipName>{p.name}</TipName>
+          {p.value}
+        </TipRow>
+      ))}
+    </TipBox>
+  );
+};
 const MetricsRow = styled.div`display: flex; gap: 20px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,0.04);`;
 const Metric = styled.div`display: flex; flex-direction: column; gap: 2px;`;
 const MetricLbl = styled.span`font-family: 'JetBrains Mono', monospace; font-size: 0.58rem; color: rgba(255,255,255,0.2); letter-spacing: 0.1em; text-transform: uppercase;`;
@@ -287,19 +315,6 @@ const DonutSVG = ({ segs, size = 140, stroke = 22 }) => {
 };
 
 // ── SVG line path builders ─────────────────────────────────────
-const buildLine = (pts, w, h) => {
-  if (!pts || pts.length < 2) return '';
-  const mx = Math.max(...pts, 1);
-  const step = w / (pts.length - 1);
-  return pts.map((v, i) => `${i === 0 ? 'M' : 'L'} ${(i * step).toFixed(1)} ${(h - (v / mx) * (h - 6)).toFixed(1)}`).join(' ');
-};
-
-const buildArea = (pts, w, h) => {
-  if (!pts || pts.length < 2) return '';
-  const line = buildLine(pts, w, h);
-  return `${line} L ${w} ${h} L 0 ${h} Z`;
-};
-
 // ── Analytics fetcher ──────────────────────────────────────────
 const fetchAnalytics = async () => {
   const token = localStorage.getItem('adminToken');
@@ -449,14 +464,17 @@ const Dashboard = () => {
   const sectionEntries = Object.entries(ad.sections || {}).sort((a, b) => b[1] - a[1]).slice(0, 7);
   const maxSec = sectionEntries[0]?.[1] || 1;
 
-  const W = 400; const H = 100;
-  const visitLine = buildLine(ad.visits,   W, H);
-  const interLine = buildLine(ad.interact, W, H);
-  const visitArea = buildArea(ad.visits,   W, H);
-  const interArea = buildArea(ad.interact, W, H);
+  const chartData = useMemo(() => (
+    (ad.labels || []).map((label, i) => ({
+      label,
+      visits: ad.visits?.[i] ?? 0,
+      interactions: ad.interact?.[i] ?? 0,
+    }))
+  ), [ad.labels, ad.visits, ad.interact]);
 
-  const labelStep = Math.ceil((ad.labels?.length || 1) / 7);
-  const hasData   = (ad.visits?.length || 0) >= 2;
+  // Thin out X-axis labels on longer ranges so they don't collide
+  const tickInterval = Math.ceil((chartData.length || 1) / 7) - 1;
+  const hasData = (ad.visits?.length || 0) >= 2;
 
   return (
     <>
@@ -502,30 +520,55 @@ const Dashboard = () => {
               </Empty>
             ) : (
               <ChartArea>
-                <SvgChart viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="gV" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#00d4ff" stopOpacity="0.3" />
-                      <stop offset="100%" stopColor="#00d4ff" stopOpacity="0" />
-                    </linearGradient>
-                    <linearGradient id="gI" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.22" />
-                      <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  {[0.25, 0.5, 0.75].map(f => (
-                    <line key={f} x1="0" y1={H * f} x2={W} y2={H * f} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
-                  ))}
-                  <path d={visitArea} fill="url(#gV)" />
-                  <path d={interArea} fill="url(#gI)" />
-                  <path d={visitLine} fill="none" stroke="#00d4ff" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
-                  <path d={interLine} fill="none" stroke="#8b5cf6" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" strokeDasharray="4 2" />
-                </SvgChart>
-                <ChartXLabels>
-                  {(ad.labels || []).map((l, i) => (
-                    <XLabel key={i}>{i % labelStep === 0 ? l : ''}</XLabel>
-                  ))}
-                </ChartXLabels>
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 6, right: 6, left: -22, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="gV" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#00d4ff" stopOpacity="0.32" />
+                        <stop offset="100%" stopColor="#00d4ff" stopOpacity="0" />
+                      </linearGradient>
+                      <linearGradient id="gI" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.24" />
+                        <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+
+                    <CartesianGrid vertical={false} stroke="rgba(255,255,255,0.05)" />
+
+                    <XAxis
+                      dataKey="label"
+                      interval={tickInterval}
+                      tick={{ fill: 'rgba(255,255,255,0.22)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
+                      axisLine={{ stroke: 'rgba(255,255,255,0.06)' }}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      allowDecimals={false}
+                      tick={{ fill: 'rgba(255,255,255,0.22)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={28}
+                    />
+
+                    <RechartsTooltip
+                      content={<ChartTooltip />}
+                      cursor={{ stroke: 'rgba(255,255,255,0.12)', strokeWidth: 1 }}
+                    />
+
+                    <Area
+                      type="monotone" dataKey="visits" name="Visitors"
+                      stroke="#00d4ff" strokeWidth={2} fill="url(#gV)"
+                      dot={false} activeDot={{ r: 4, stroke: '#0a1525', strokeWidth: 2 }}
+                      isAnimationActive animationDuration={600}
+                    />
+                    <Area
+                      type="monotone" dataKey="interactions" name="Interactions"
+                      stroke="#8b5cf6" strokeWidth={2} strokeDasharray="4 2" fill="url(#gI)"
+                      dot={false} activeDot={{ r: 4, stroke: '#0a1525', strokeWidth: 2 }}
+                      isAnimationActive animationDuration={600}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               </ChartArea>
             )}
 
