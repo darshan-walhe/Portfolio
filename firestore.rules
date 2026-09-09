@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Only the backend authenticates against Firestore (see
+    // backend/src/config/firebase.js), always as this one fixed
+    // identity — so any write, from any source, must present it.
+    // ⚠️ Replace the email below with your real admin login email.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == "REPLACE_WITH_YOUR_ADMIN_EMAIL";
+    }
+
+    // ── Public portfolio content ─────────────────────────────
+    // Readable by anyone (matches what the public site already
+    // shows); only the authenticated backend can write.
+    match /AboutMe/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /Projects/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /Skills/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /Experience/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /Education/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /Certifications/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /Resume/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ── Private data ──────────────────────────────────────────
+    // Messages = visitor contact-form submissions, Analytics = raw
+    // visit/interaction events. Neither should be publicly readable,
+    // even though the write endpoints themselves are public REST
+    // routes — the backend performs the actual Firestore write while
+    // authenticated as admin, so this still works with no code changes.
+    match /Messages/{docId} {
+      allow read, write: if isAdmin();
+    }
+    match /Analytics/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // Deny anything not explicitly listed above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
