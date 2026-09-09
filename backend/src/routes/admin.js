@@ -25,7 +25,7 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email.toLowerCase(), password);
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
     console.log(userCredential);
     const token = generateToken({ role: 'admin', uid: userCredential.user.uid });
     res.json({ token });
