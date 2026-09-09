@@ -36,6 +36,7 @@ export {
   deleteCertification,
   handleLinkClickAnalytics,
   handleProjectClickAnalytics,
+  trackPageVisit,
   HeroEventTracker,
   ContactFormAnalytics,
 } from './Api';
