@@ -12,6 +12,7 @@ import education from './routes/education.js';
 import certifications from './routes/certifications.js';
 import analytics from './routes/analytics.js'
 import resumeRouter from './routes/resume.js';
+import debugRouter from './routes/debug.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -44,6 +45,7 @@ app.use('/api/education', education);
 app.use('/api/certifications', certifications);
 app.use('/api/analytics', analytics);
 app.use('/api/resume', resumeRouter);
+app.use('/api/debug', debugRouter);
 
 // Admin Routes (protected)
 app.use('/api/admin', adminRouter);
