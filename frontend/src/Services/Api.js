@@ -385,8 +385,7 @@ export const uploadProfileImage = (file) => fileToOptimizedDataUrl(file, 700, 0.
 // ==================================================================
 export const adminLogin = async (email, password) => {
   try {
-    console.log(email);
-    console.log(password);
+
     const res = await fetch(`${API_URL}/api/admin/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
