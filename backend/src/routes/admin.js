@@ -17,8 +17,7 @@ const router = Router();
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
-  console.log(email);
-  console.log(password);
+
 
   if (!email || !password) {
     return res.status(400).json({ error: 'Email and password are required' });
@@ -26,7 +25,7 @@ router.post('/login', async (req, res) => {
 
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    console.log(userCredential);
+
     const token = generateToken({ role: 'admin', uid: userCredential.user.uid });
     res.json({ token });
   } catch (error) {
