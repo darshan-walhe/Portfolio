@@ -662,7 +662,7 @@ const Projects = () => {
               {filtered.map(p => {
                 const accent = p.accent || '#22d3ee';
                 return (
-                  <Card key={p.id} $accent={accent} onClick={() => setExpanded(p.id)}>
+                  <Card key={p.id} $accent={accent} onClick={() => { handleProjectClickAnalytics(p.name); setExpanded(p.id); }}>
                     <CardThumb>
                       {p.image ? (
                         <CardThumbImg src={p.image} alt={p.name} />
@@ -713,7 +713,7 @@ const Projects = () => {
         const p = expandedProject;
         const accent = p.accent || '#22d3ee';
         return (
-          <Overlay onClick={handleProjectClickAnalytics(p.name),() => setExpanded(null)}>
+          <Overlay onClick={() => setExpanded(null)}>
             <Modal $accent={accent} onClick={e => e.stopPropagation()}>
               <CloseBtn onClick={() => setExpanded(null)}>✕</CloseBtn>
 

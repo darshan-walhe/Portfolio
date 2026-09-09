@@ -8,12 +8,17 @@ import Projects from './pages/Projects/Projects';
 import Skills from './pages/Skills/Skills';
 import Experience from './pages/Experience/Experience';
 import Contact from './pages/Contact/Contact';
+import { trackPageVisit } from './Services/ManageData';
 
 // Lazy-load Admin pages — they're heavy and only visited occasionally
 const Admin = lazy(() => import('./pages/Admin/Admin'));
 const AdminLogin = lazy(() => import('./pages/Admin/AdminLogin'));
 
 function Portfolio() {
+  // Record one visit per page load — the Dashboard's "Visitors" chart reads
+  // these 'visit' events, and nothing was ever sending them before.
+  useEffect(() => { trackPageVisit(); }, []);
+
   return (
     <>
       <Navbar />

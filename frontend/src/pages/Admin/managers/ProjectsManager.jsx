@@ -51,12 +51,43 @@ const FormCard = styled(Card)`
   overflow-y: auto;
 `;
 
+const FileZone = styled.label`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border: 1.5px dashed rgba(255,255,255,0.12);
+  border-radius: 10px;
+  padding: 22px 14px;
+  cursor: pointer;
+  text-align: center;
+  background: rgba(255,255,255,0.02);
+  transition: all 0.2s ease;
+
+  &:hover { border-color: rgba(0,212,255,0.4); background: rgba(0,212,255,0.04); }
+  ${({ $disabled }) => $disabled && 'opacity: 0.5; pointer-events: none;'}
+`;
+
+const FileZoneText = styled.div`
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255,255,255,0.6);
+`;
+
+const FileZoneHint = styled.div`
+  font-size: 0.68rem;
+  color: rgba(255,255,255,0.25);
+  font-family: 'JetBrains Mono', monospace;
+`;
+
 // ── Component ──────────────────────────────────────────────────
 const ProjectsManager = ({ onDataUpdate }) => {
   const [projects, setProjects] = useState([]);
   const [selected, setSelected] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [imageUrl, setImageUrl] = useState('');
+  const [imgBusy, setImgBusy] = useState(false);
+  const [imageError, setImageError] = useState('');
   const [imagePreview, setImagePreview] = useState('');
   const [form, setForm] = useState({
     name: '', category: 'Fullstack', desc: '', tech: '',
@@ -78,22 +109,33 @@ const ProjectsManager = ({ onDataUpdate }) => {
       type: p.type || 'Web', accent: p.accent || '#00d4ff',
       status: p.status || 'Completed', live: p.live || '', github: p.github || '', image: p.image || '',
     });
-    setImageUrl(p.image || ''); setImagePreview(p.image || '');
+    setImagePreview(p.image || ''); setImageError('');
   };
 
   const set = (k, v) => setForm(f => ({...f, [k]: v}));
 
-  const handleImageChange = (e) => {
-    const u = e.target.value.trim();
-    setImageUrl(u); setImagePreview(u || '');
+  // Reads the picked file, resizes/compresses it in the browser, and stores
+  // the resulting data URL as the live preview — this is what actually gets
+  // saved as the project's image, replacing the old "paste an image URL" box.
+  const handleImageFile = async (file) => {
+    if (!file) return;
+    setImageError(''); setImgBusy(true);
+    try {
+      const dataUrl = await uploadProjectImage(file);
+      setImagePreview(dataUrl);
+    } catch (err) {
+      console.error(err);
+      setImageError(err.message || 'Failed to process image');
+    } finally {
+      setImgBusy(false);
+    }
   };
 
   const submit = async (e) => {
     e.preventDefault(); setUploading(true);
     try {
       const tech = form.tech.split(',').map(t => t.trim()).filter(Boolean);
-      let data = {...form, tech};
-      if (imageUrl) { data.image = await uploadProjectImage(imageUrl); }
+      let data = {...form, tech, image: imagePreview};
       if (selected) { await updateProject(selected.id, data); }
       else          { await insertProject(data); }
       load(); reset(); onDataUpdate?.();
@@ -108,7 +150,7 @@ const ProjectsManager = ({ onDataUpdate }) => {
   };
 
   const reset = () => {
-    setSelected(null); setImageUrl(''); setImagePreview('');
+    setSelected(null); setImagePreview(''); setImageError('');
     setForm({ name:'', category:'Fullstack', desc:'', tech:'', type:'Web', accent:'#00d4ff', status:'Completed', live:'', github:'', image:'' });
   };
 
@@ -146,9 +188,21 @@ const ProjectsManager = ({ onDataUpdate }) => {
             <form onSubmit={submit}>
               <FormCol>
                 <FormGroup>
-                  <Label>Image URL</Label>
-                  <Input type="text" value={imageUrl} onChange={handleImageChange}
-                    placeholder="https://example.com/image.jpg" disabled={uploading} />
+                  <Label>Project Image</Label>
+                  <FileZone $disabled={uploading || imgBusy}>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={e => handleImageFile(e.target.files?.[0])}
+                      style={{ display: 'none' }}
+                      disabled={uploading || imgBusy}
+                    />
+                    <FileZoneText>
+                      {imgBusy ? 'Processing image…' : imagePreview ? 'Click to replace image' : 'Click to upload an image'}
+                    </FileZoneText>
+                    <FileZoneHint>JPG, PNG or WebP · resized &amp; compressed automatically</FileZoneHint>
+                  </FileZone>
+                  {imageError && <Helper style={{ color: '#f43f5e' }}>{imageError}</Helper>}
                   {imagePreview && (
                     <ImgPreview h="160px"><img src={imagePreview} alt="preview" /></ImgPreview>
                   )}

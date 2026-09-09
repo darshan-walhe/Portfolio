@@ -474,7 +474,11 @@ const Dashboard = () => {
 
   // Thin out X-axis labels on longer ranges so they don't collide
   const tickInterval = Math.ceil((chartData.length || 1) / 7) - 1;
-  const hasData = (ad.visits?.length || 0) >= 2;
+  // `ad.visits`/`ad.interact` always have one bucket per day in the selected
+  // range (they're pre-filled with 0s), so checking their length is always
+  // true and used to render a flat all-zero line instead of the empty state.
+  // Check whether any bucket actually has a nonzero count instead.
+  const hasData = (ad.totalVisits || 0) + (ad.totalInteract || 0) > 0;
 
   return (
     <>
@@ -544,6 +548,15 @@ const Dashboard = () => {
                     />
                     <YAxis
                       allowDecimals={false}
+                      // Explicit domain anchored at 0: without this, Recharts
+                      // auto-scales to [min, max] of the visible data, and
+                      // when that range is very small (e.g. everything is 0,
+                      // or every day has the same count) min and max collapse
+                      // to nearly the same value. The line then gets drawn
+                      // through the middle of the chart area instead of at
+                      // the bottom, which is what looked like a flat
+                      // horizontal line cutting across the panel.
+                      domain={[0, (dataMax) => Math.max(dataMax, 4)]}
                       tick={{ fill: 'rgba(255,255,255,0.22)', fontSize: 9, fontFamily: "'JetBrains Mono', monospace" }}
                       axisLine={false}
                       tickLine={false}

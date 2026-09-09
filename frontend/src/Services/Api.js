@@ -19,8 +19,16 @@ const handleResponse = async (response, errorMessage) => {
       serverMsg = error.error || errorMessage;
     } catch (_) { }
 
-    // Auto-clear expired/invalid token and redirect to login
-    if (response.status === 401 || response.status === 403) {
+    // Auto-clear expired/invalid token and redirect to login — but ONLY when
+    // this request actually carried a session token. Without this check, a
+    // wrong-password response from POST /api/admin/login (which never had a
+    // token to begin with) also matched here and force-reloaded the login
+    // page, wiping out the "Invalid credentials" message before the user
+    // ever saw it. A missing/expired session, by contrast, always fails on a
+    // request that *did* have a token, so gating on that distinguishes the
+    // two cases correctly.
+    const hadToken = !!localStorage.getItem('adminToken');
+    if ((response.status === 401 || response.status === 403) && hadToken) {
       localStorage.removeItem('adminToken');
       localStorage.removeItem('adminAuth');
       window.location.href = '/admin'; // adjust to your login route
@@ -301,29 +309,74 @@ export const deleteMessage = async (id) => {
 };
 
 // ==================================================================
-//                        Image URL Validation
+//                        Image Upload
 // ==================================================================
-export const uploadProjectImage = (imageUrl) => {
-  try {
-    if (!imageUrl) throw new Error('Image URL is required');
-    new URL(imageUrl);
-    return imageUrl;
-  } catch (error) {
-    console.error('uploadProjectImage error:', error);
-    throw error;
-  }
+// There's no Firebase Storage bucket wired up on the backend, so images are
+// stored the same way the resume already is: as a base64 data URL saved
+// directly on the Firestore document (Projects.image / AboutMe.profileImage).
+// To stay well under Firestore's 1MiB-per-document limit we resize and
+// compress the image in the browser before it ever leaves the client.
+const MAX_IMAGE_OUTPUT_BYTES = 900 * 1024; // ~900KB decoded, safely under 1MiB
+
+const fileToOptimizedDataUrl = (file, maxDimension = 1000, startQuality = 0.85) => {
+  return new Promise((resolve, reject) => {
+    if (!file) return reject(new Error('No file selected'));
+    if (!file.type || !file.type.startsWith('image/')) {
+      return reject(new Error('Please select an image file (JPG, PNG, WebP...)'));
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read the selected file'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Failed to load the selected image'));
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxDimension || height > maxDimension) {
+          if (width >= height) {
+            height = Math.round((height / width) * maxDimension);
+            width = maxDimension;
+          } else {
+            width = Math.round((width / height) * maxDimension);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Step quality down until the encoded size fits the budget
+        let quality = startQuality;
+        let dataUrl = canvas.toDataURL('image/jpeg', quality);
+        const approxBytes = (u) => u.length * 0.75;
+
+        while (approxBytes(dataUrl) > MAX_IMAGE_OUTPUT_BYTES && quality > 0.35) {
+          quality -= 0.1;
+          dataUrl = canvas.toDataURL('image/jpeg', quality);
+        }
+
+        if (approxBytes(dataUrl) > MAX_IMAGE_OUTPUT_BYTES) {
+          return reject(new Error('Image is too large even after compression. Try a smaller image.'));
+        }
+
+        resolve(dataUrl);
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
 };
 
-export const uploadProfileImage = (imageUrl) => {
-  try {
-    if (!imageUrl) throw new Error('Image URL is required');
-    new URL(imageUrl);
-    return imageUrl;
-  } catch (error) {
-    console.error('uploadProfileImage error:', error);
-    throw error;
-  }
-};
+// Admin: reads an image File, resizes/compresses it client-side, and returns
+// a data URL ready to be saved as the project's `image` field.
+export const uploadProjectImage = (file) => fileToOptimizedDataUrl(file, 1000, 0.85);
+
+// Admin: same idea for the About/Hero profile photo (slightly smaller, since
+// it's only ever shown at avatar size).
+export const uploadProfileImage = (file) => fileToOptimizedDataUrl(file, 700, 0.85);
 
 // ==================================================================
 //                        Admin Authentication
@@ -553,6 +606,21 @@ export const handleProjectClickAnalytics = async (link) => {
     }).catch(() => { });
   } catch (error) {
     console.error('handleProjectClickAnalytics error:', error);
+  }
+};
+
+// Public: records one page-visit event. Nothing in the app called this
+// before, which is why the Dashboard's "Visitors" line always sat flat at 0 —
+// there was simply never any 'visit' data to plot.
+export const trackPageVisit = async () => {
+  try {
+    fetch(`${API_URL}/api/analytics`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'visit' }),
+    }).catch(() => { });
+  } catch (error) {
+    console.error('trackPageVisit error:', error);
   }
 };
 
